@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  platform    PostPlatform
+  format      PostFormat
+  headline    String
+  subhead     String?
+  caption     String
+  hashtags    String[]
+  cta         String
+  visualBrief Json     // Style, colors, imagery preferences
+  altText     String
+  designId    String?  // Canva design ID
+  exportUrls  String[] // Asset download URLs
+  status      PostStatus @default(DRAFT)
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  metrics     Json?    // Engagement metrics
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("posts")
+}
+
+model ContentGeneration {
+  id          String   @id @default(cuid())
+  userId      String
+  prompt      String
+  response    Json
+  tokensUsed  Int
+  provider    String   // "openai", etc.
+  model       String   // "gpt-4", etc.
+  createdAt   DateTime @default(now())
+
+  @@map("content_generations")
+}
+
+enum PostPlatform {
+  INSTAGRAM
+  FACEBOOK
+  TWITTER
+  TIKTOK
+  YOUTUBE_SHORTS
+  LINKEDIN
+}
+
+enum PostFormat {
+  SQUARE
+  VERTICAL
+  HORIZONTAL
+  CAROUSEL
+  REEL
+  STORY
+}
+
+enum PostStatus {
+  DRAFT
+  GENERATED
+  SCHEDULED
+  PUBLISHED
+  FAILED
+  ARCHIVED
+}

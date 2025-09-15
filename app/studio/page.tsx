@@ -33,7 +33,7 @@ export default function ContentStudio() {
         {
             id: '1',
             type: 'ai',
-            content: "👋 Hi! I'm your AI content assistant. I can help you create engaging social media posts for Facebook and Instagram. Just tell me what you'd like to create!\n\n**Try saying:**\n• \"Create a motivational Monday post\"\n• \"Generate 3 fitness tips for this week\"\n• \"Schedule a product launch announcement for tomorrow at 2PM\"",
+            content: "Hi! I'm your AI content assistant. I can help you create engaging social media posts for Facebook and Instagram. Just tell me what you'd like to create!\n\n**Try saying:**\n• \"Create a motivational Monday post\"\n• \"Generate 3 fitness tips for this week\"\n• \"Schedule a product launch announcement for tomorrow at 2PM\"",
             timestamp: new Date(),
         }
     ])
@@ -85,7 +85,7 @@ export default function ContentStudio() {
                 generatedContent: {
                     id: 'post-' + Date.now(),
                     platform: 'instagram',
-                    content: "🌟 Monday Motivation Alert! 🌟\n\nNew week, new opportunities to shine! Remember:\n✨ Your potential is unlimited\n✨ Every step forward counts\n✨ Believe in your journey\n\nWhat's one goal you're crushing this week? Let us know below! 👇",
+                    content: "Monday Motivation Alert!\n\nNew week, new opportunities to shine! Remember:\n* Your potential is unlimited\n* Every step forward counts\n* Believe in your journey\n\nWhat's one goal you're crushing this week? Let us know below!",
                     hashtags: ['#MondayMotivation', '#NewWeek', '#Goals', '#Mindset', '#Success'],
                     suggestedTime: 'Monday at 9:00 AM',
                     visualBrief: 'Bright, energetic image with sunrise or mountain theme. Use vibrant colors that inspire action.',
@@ -101,7 +101,7 @@ export default function ContentStudio() {
                 generatedContent: {
                     id: 'post-' + Date.now(),
                     platform: 'facebook',
-                    content: "💪 FITNESS TIP #1: Stay Hydrated! 💧\n\nDrinking enough water boosts your energy, improves performance, and helps recovery. Aim for at least 8 glasses a day!\n\n🔥 Pro tip: Add lemon or cucumber for extra flavor and nutrients.",
+                    content: "FITNESS TIP #1: Stay Hydrated!\n\nDrinking enough water boosts your energy, improves performance, and helps recovery. Aim for at least 8 glasses a day!\n\nPro tip: Add lemon or cucumber for extra flavor and nutrients.",
                     hashtags: ['#FitnessTips', '#Hydration', '#HealthyLiving', '#Wellness'],
                     suggestedTime: 'Wednesday at 6:00 PM',
                     visualBrief: 'Clean image with water bottle, fresh fruits, or someone drinking water after workout.',
@@ -129,7 +129,7 @@ export default function ContentStudio() {
         const scheduleMessage: Message = {
             id: Date.now().toString(),
             type: 'ai',
-            content: `✅ Perfect! I've scheduled your ${post.platform} post for ${post.suggestedTime}.\n\n📅 **Scheduled Details:**\n• Platform: ${post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}\n• Time: ${post.suggestedTime}\n• Status: Scheduled\n\nYou can view and manage all your scheduled posts in the Content Planner. Want to create another post?`,
+            content: `Perfect! I've scheduled your ${post.platform} post for ${post.suggestedTime}.\n\n**Scheduled Details:**\n• Platform: ${post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}\n• Time: ${post.suggestedTime}\n• Status: Scheduled\n\nYou can view and manage all your scheduled posts in the Content Planner. Want to create another post?`,
             timestamp: new Date(),
         }
         setMessages(prev => [...prev, scheduleMessage])
@@ -175,8 +175,8 @@ export default function ContentStudio() {
                             <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-3xl ${message.type === 'user' ? 'ml-12' : 'mr-12'}`}>
                                     <div className={`rounded-2xl px-4 py-3 ${message.type === 'user'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-card border border-border'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-card border border-border'
                                         }`}>
                                         <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
 
@@ -327,7 +327,7 @@ export default function ContentStudio() {
                                     className="h-8 text-xs text-muted-foreground hover:text-foreground"
                                     onClick={() => setInput("Create a motivational Monday post")}
                                 >
-                                    🌟 Motivational Monday
+                                    Motivational Monday
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -335,7 +335,7 @@ export default function ContentStudio() {
                                     className="h-8 text-xs text-muted-foreground hover:text-foreground"
                                     onClick={() => setInput("Generate 5 posts for this week")}
                                 >
-                                    📅 Week's Content
+                                    Week's Content
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -343,7 +343,7 @@ export default function ContentStudio() {
                                     className="h-8 text-xs text-muted-foreground hover:text-foreground"
                                     onClick={() => setInput("Create a product launch announcement")}
                                 >
-                                    🚀 Product Launch
+                                    Product Launch
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -351,7 +351,7 @@ export default function ContentStudio() {
                                     className="h-8 text-xs text-muted-foreground hover:text-foreground"
                                     onClick={() => setInput("Schedule a behind-the-scenes post for tomorrow")}
                                 >
-                                    🎬 Behind the Scenes
+                                    Behind the Scenes
                                 </Button>
                             </div>
                         </div>

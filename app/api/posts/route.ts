@@ -44,14 +44,6 @@ export async function GET(request: NextRequest) {
 
         const posts = await prisma.post.findMany({
             where,
-            include: {
-                company: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
-            },
             orderBy: { createdAt: 'desc' },
             skip: (page - 1) * limit,
             take: limit,
@@ -97,25 +89,10 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const validatedData = createPostSchema.parse(body)
 
-        // Verify company ownership
-        const company = await prisma.company.findFirst({
-            where: {
-                id: body.companyId,
-                userId: user.id
-            }
-        })
-
-        if (!company) {
-            return Response.json(
-                { error: 'Company not found or access denied' },
-                { status: 404 }
-            )
-        }
-
-        // Create post
+        // Create post for the authenticated user
         const post = await prisma.post.create({
             data: {
-                companyId: body.companyId,
+                userId: user.id,
                 title: validatedData.title,
                 platform: validatedData.platform,
                 format: validatedData.format,
@@ -125,17 +102,8 @@ export async function POST(request: NextRequest) {
                 hashtags: validatedData.hashtags,
                 cta: validatedData.cta,
                 visualBrief: validatedData.visualBrief,
-                productRef: validatedData.productRef,
                 altText: validatedData.altText,
                 status: 'DRAFT',
-            },
-            include: {
-                company: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
             }
         })
 

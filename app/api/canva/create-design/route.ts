@@ -32,12 +32,7 @@ export async function POST(request: NextRequest) {
         const post = await prisma.post.findFirst({
             where: {
                 id: validatedData.postId,
-                company: {
-                    userId: user.id
-                }
-            },
-            include: {
-                company: true,
+                userId: user.id
             }
         })
 
@@ -48,11 +43,11 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Get Canva API key for the company
+        // Get Canva API key for the user
         const canvaApiKey = await prisma.apiKey.findFirst({
             where: {
-                companyId: post.company.id,
-                provider: 'canva',
+                userId: user.id,
+                provider: 'CANVA',
                 isActive: true,
             }
         })
@@ -86,8 +81,13 @@ export async function POST(request: NextRequest) {
             templateId = appropriateTemplate.id
         }
 
-        // Prepare brand kit
-        const brandKit = post.company.brandKit as any
+        // For demo purposes, use default brand colors
+        const defaultBrandKit = {
+            primaryColor: '#1877F2',
+            secondaryColor: '#42A5F5',
+            accentColor: '#FF6B6B'
+        }
+
         const visualBrief = post.visualBrief as any
 
         // Get format dimensions
@@ -98,17 +98,17 @@ export async function POST(request: NextRequest) {
             templateId: templateId!,
             brandKit: {
                 colors: [
-                    brandKit.primaryColor,
-                    brandKit.secondaryColor,
-                    brandKit.accentColor || brandKit.primaryColor,
+                    defaultBrandKit.primaryColor,
+                    defaultBrandKit.secondaryColor,
+                    defaultBrandKit.accentColor,
                 ].filter(Boolean),
-                logoUrl: brandKit.logoUrl,
+                logoUrl: undefined,
             },
             content: {
                 headline: post.headline,
                 subhead: post.subhead || undefined,
                 bodyText: post.caption.length > 200 ? post.headline : post.caption,
-                logoPlacement: !!brandKit.logoUrl,
+                logoPlacement: false,
             },
             format: {
                 width: dimensions.width,

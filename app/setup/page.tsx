@@ -6,14 +6,16 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import {
-    Building2,
+    User,
     Palette,
-    Upload,
-    Plus,
-    X,
+    Settings,
     CheckCircle,
     AlertCircle,
     Loader2,
+    Key,
+    Sparkles,
+    X,
+    Upload,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -26,25 +28,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
-import { apiClient } from "@/lib/api-client"
 
-const companySchema = z.object({
-    name: z.string().min(2, "Company name must be at least 2 characters"),
-    description: z.string().min(10, "Description must be at least 10 characters"),
-    tone: z.array(z.string()).min(1, "Select at least one brand tone"),
-    brandKit: z.object({
+const userSetupSchema = z.object({
+    preferences: z.object({
+        brandTone: z.array(z.string()).min(1, "Select at least one brand tone"),
         primaryColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid hex color"),
         secondaryColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid hex color"),
         accentColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid hex color"),
-        logoUrl: z.string().url("Invalid logo URL").optional().or(z.literal("")),
-        fonts: z.object({
-            primary: z.string().min(1, "Primary font is required"),
-            secondary: z.string().optional(),
-        }),
+        defaultPlatforms: z.array(z.string()).min(1, "Select at least one platform"),
+    }),
+    apiKeys: z.object({
+        geminiKey: z.string().optional(),
     }),
 })
 
-type CompanyFormData = z.infer<typeof companySchema>
+type UserSetupData = z.infer<typeof userSetupSchema>
 
 const toneOptions = [
     { value: "professional", label: "Professional", description: "Formal and business-focused" },
@@ -57,106 +55,110 @@ const toneOptions = [
     { value: "luxury", label: "Luxury", description: "Premium and sophisticated" },
 ]
 
-const fontOptions = [
-    "Arial", "Helvetica", "Roboto", "Open Sans", "Lato", "Montserrat",
-    "Playfair Display", "Merriweather", "Source Sans Pro", "Inter"
+const platformOptions = [
+    { value: "INSTAGRAM", label: "Instagram", description: "Share photos and stories" },
+    { value: "FACEBOOK", label: "Facebook", description: "Connect with your community" },
+    { value: "TWITTER", label: "Twitter", description: "Share quick updates" },
+    { value: "LINKEDIN", label: "LinkedIn", description: "Professional networking" },
+    { value: "TIKTOK", label: "TikTok", description: "Short-form video content" },
 ]
 
-export default function CompanySetupPage() {
+export default function UserSetupPage() {
     const router = useRouter()
     const [step, setStep] = useState(1)
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const [logoFile, setLogoFile] = useState<File | null>(null)
-    const [logoPreview, setLogoPreview] = useState<string>("")
+    const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
-    const form = useForm<CompanyFormData>({
-        resolver: zodResolver(companySchema),
+    const form = useForm<UserSetupData>({
+        resolver: zodResolver(userSetupSchema),
         defaultValues: {
-            name: "",
-            description: "",
-            tone: [],
-            brandKit: {
-                primaryColor: "#3B82F6",
-                secondaryColor: "#10B981",
-                accentColor: "#F59E0B",
-                logoUrl: "",
-                fonts: {
-                    primary: "Inter",
-                    secondary: "",
-                },
+            preferences: {
+                brandTone: [],
+                primaryColor: "#1877F2",
+                secondaryColor: "#42A5F5",
+                accentColor: "#FF6B6B",
+                defaultPlatforms: [],
+            },
+            apiKeys: {
+                geminiKey: "",
             },
         },
     })
 
-    const totalSteps = 4
+    const totalSteps = 3
     const progress = (step / totalSteps) * 100
 
-    const onSubmit = async (data: CompanyFormData) => {
+    const onSubmit = async (data: UserSetupData) => {
         setIsSubmitting(true)
 
         try {
-            // Upload logo if provided
-            let logoUrl = data.brandKit.logoUrl
-            if (logoFile) {
-                try {
-                    const uploadResult = await apiClient.uploadFile(logoFile, 'logos')
-                    logoUrl = uploadResult.url
-                } catch (uploadError) {
-                    console.warn('Logo upload failed, proceeding without logo:', uploadError)
-                }
+            // Save user preferences to localStorage for now
+            // In a full implementation, this would be saved to the database
+            localStorage.setItem('userPreferences', JSON.stringify(data.preferences))
+
+            // Save API keys if provided
+            const apiKeyPromises = []
+
+            if (data.apiKeys.geminiKey) {
+                apiKeyPromises.push(
+                    fetch('/api/user/api-keys', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            provider: 'GEMINI',
+                            keyName: 'Gemini API Key',
+                            keyValue: data.apiKeys.geminiKey,
+                        }),
+                    })
+                )
             }
 
-            // Create company with API
-            const companyData = {
-                ...data,
-                brandKit: {
-                    ...data.brandKit,
-                    logoUrl: logoUrl || undefined,
-                },
-            }
+            await Promise.all(apiKeyPromises)
 
-            const result = await apiClient.createCompany(companyData)
-
-            toast.success(`Company "${result.company.name}" created successfully!`)
+            toast.success("Profile setup completed successfully!")
             router.push("/")
 
         } catch (error: any) {
-            console.error('Company creation error:', error)
-            if (error.status === 401) {
-                toast.error("Please log in to create a company profile.")
-                router.push("/login")
-            } else {
-                toast.error(error.message || "Failed to create company profile. Please try again.")
-            }
+            console.error('Profile setup error:', error)
+            toast.error("Failed to complete profile setup. Please try again.")
         } finally {
             setIsSubmitting(false)
         }
     }
 
-    const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-        if (file) {
-            setLogoFile(file)
-            const reader = new FileReader()
-            reader.onload = (e) => {
-                const url = e.target?.result as string
-                setLogoPreview(url)
-                form.setValue("brandKit.logoUrl", url)
-            }
-            reader.readAsDataURL(file)
-        }
-    }
-
     const addTone = (tone: string) => {
-        const currentTones = form.getValues("tone")
+        const currentTones = form.getValues("preferences.brandTone")
         if (!currentTones.includes(tone)) {
-            form.setValue("tone", [...currentTones, tone])
+            form.setValue("preferences.brandTone", [...currentTones, tone])
         }
     }
 
     const removeTone = (tone: string) => {
-        const currentTones = form.getValues("tone")
-        form.setValue("tone", currentTones.filter(t => t !== tone))
+        const currentTones = form.getValues("preferences.brandTone")
+        form.setValue("preferences.brandTone", currentTones.filter(t => t !== tone))
+    }
+
+    const addPlatform = (platform: string) => {
+        const currentPlatforms = form.getValues("preferences.defaultPlatforms")
+        if (!currentPlatforms.includes(platform)) {
+            form.setValue("preferences.defaultPlatforms", [...currentPlatforms, platform])
+        }
+    }
+
+    const removePlatform = (platform: string) => {
+        const currentPlatforms = form.getValues("preferences.defaultPlatforms")
+        form.setValue("preferences.defaultPlatforms", currentPlatforms.filter(p => p !== platform))
+    }
+
+    const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        if (file) {
+            const reader = new FileReader()
+            reader.onload = (e) => {
+                setLogoPreview(e.target?.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
     }
 
     const nextStep = () => setStep(Math.min(step + 1, totalSteps))
@@ -168,11 +170,11 @@ export default function CompanySetupPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center mb-4">
-                        <Building2 className="h-8 w-8 text-primary mr-2" />
-                        <h1 className="text-3xl font-bold">Company Setup</h1>
+                        <User className="h-8 w-8 text-primary mr-2" />
+                        <h1 className="text-3xl font-bold">Profile Setup</h1>
                     </div>
                     <p className="text-muted-foreground">
-                        Let's set up your company profile to create amazing social media content
+                        Customize your AI content generation preferences
                     </p>
                 </div>
 
@@ -188,182 +190,134 @@ export default function CompanySetupPage() {
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
-                        {/* Step 1: Basic Information */}
+                        {/* Step 1: Brand Preferences */}
                         {step === 1 && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center">
-                                        <Building2 className="h-5 w-5 mr-2" />
-                                        Basic Information
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Tell us about your company and what you do.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Company Name</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Enter your company name" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={form.control}
-                                        name="description"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Company Description</FormLabel>
-                                                <FormControl>
-                                                    <Textarea
-                                                        placeholder="Describe what your company does, your mission, and key offerings..."
-                                                        className="min-h-[120px]"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    This will help our AI understand your brand and create relevant content.
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Step 2: Brand Tone */}
-                        {step === 2 && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Brand Tone & Voice</CardTitle>
-                                    <CardDescription>
-                                        Select the tones that best represent your brand communication style.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {toneOptions.map((tone) => (
-                                            <div
-                                                key={tone.value}
-                                                className={`p-4 rounded-lg border cursor-pointer transition-colors ${form.watch("tone").includes(tone.value)
-                                                    ? "border-primary bg-primary/5"
-                                                    : "border-border hover:border-primary/50"
-                                                    }`}
-                                                onClick={() => {
-                                                    if (form.watch("tone").includes(tone.value)) {
-                                                        removeTone(tone.value)
-                                                    } else {
-                                                        addTone(tone.value)
-                                                    }
-                                                }}
-                                            >
-                                                <div className="flex items-start justify-between">
-                                                    <div>
-                                                        <h3 className="font-medium">{tone.label}</h3>
-                                                        <p className="text-sm text-muted-foreground mt-1">
-                                                            {tone.description}
-                                                        </p>
-                                                    </div>
-                                                    {form.watch("tone").includes(tone.value) && (
-                                                        <CheckCircle className="h-5 w-5 text-primary" />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {form.watch("tone").length > 0 && (
-                                        <div className="mt-4">
-                                            <p className="text-sm font-medium mb-2">Selected tones:</p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {form.watch("tone").map((tone) => (
-                                                    <Badge key={tone} variant="secondary" className="flex items-center gap-1">
-                                                        {toneOptions.find(t => t.value === tone)?.label}
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-auto p-0 ml-1"
-                                                            onClick={() => removeTone(tone)}
-                                                        >
-                                                            <X className="h-3 w-3" />
-                                                        </Button>
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {form.formState.errors.tone && (
-                                        <p className="text-sm text-destructive mt-2">
-                                            {form.formState.errors.tone.message}
-                                        </p>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Step 3: Brand Colors & Logo */}
-                        {step === 3 && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center">
                                         <Palette className="h-5 w-5 mr-2" />
-                                        Brand Colors & Logo
+                                        Brand Preferences
                                     </CardTitle>
                                     <CardDescription>
-                                        Define your visual identity with colors and logo.
+                                        Set your brand tone and default platforms for content generation.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
-
-                                    {/* Logo Upload */}
-                                    <div className="space-y-2">
-                                        <FormLabel>Logo (Optional)</FormLabel>
-                                        <div className="flex items-center space-x-4">
-                                            <div className="flex-1">
-                                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50">
-                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                        <Upload className="h-8 w-8 mb-2 text-muted-foreground" />
-                                                        <p className="text-sm text-muted-foreground">
-                                                            Click to upload logo
-                                                        </p>
+                                    {/* Brand Tone */}
+                                    <div className="space-y-4">
+                                        <FormLabel>Brand Tone & Voice</FormLabel>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {toneOptions.map((tone) => (
+                                                <div
+                                                    key={tone.value}
+                                                    className={`p-4 rounded-lg border cursor-pointer transition-colors ${form.watch("preferences.brandTone").includes(tone.value)
+                                                        ? "border-primary bg-primary/5"
+                                                        : "border-border hover:border-primary/50"
+                                                        }`}
+                                                    onClick={() => {
+                                                        if (form.watch("preferences.brandTone").includes(tone.value)) {
+                                                            removeTone(tone.value)
+                                                        } else {
+                                                            addTone(tone.value)
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        <div>
+                                                            <h3 className="font-medium">{tone.label}</h3>
+                                                            <p className="text-sm text-muted-foreground mt-1">
+                                                                {tone.description}
+                                                            </p>
+                                                        </div>
+                                                        {form.watch("preferences.brandTone").includes(tone.value) && (
+                                                            <CheckCircle className="h-5 w-5 text-primary" />
+                                                        )}
                                                     </div>
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="hidden"
-                                                        onChange={handleLogoUpload}
-                                                    />
-                                                </label>
-                                            </div>
-                                            {logoPreview && (
-                                                <div className="w-32 h-32 border rounded-lg overflow-hidden">
-                                                    <img
-                                                        src={logoPreview}
-                                                        alt="Logo preview"
-                                                        className="w-full h-full object-contain"
-                                                    />
                                                 </div>
-                                            )}
+                                            ))}
                                         </div>
+
+                                        {form.watch("preferences.brandTone").length > 0 && (
+                                            <div className="mt-4">
+                                                <p className="text-sm font-medium mb-2">Selected tones:</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {form.watch("preferences.brandTone").map((tone) => (
+                                                        <Badge key={tone} variant="secondary" className="flex items-center gap-1">
+                                                            {toneOptions.find(t => t.value === tone)?.label}
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-auto p-0 ml-1"
+                                                                onClick={() => removeTone(tone)}
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </Button>
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <Separator />
 
+                                    {/* Default Platforms */}
+                                    <div className="space-y-4">
+                                        <FormLabel>Default Platforms</FormLabel>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {platformOptions.map((platform) => (
+                                                <div
+                                                    key={platform.value}
+                                                    className={`p-4 rounded-lg border cursor-pointer transition-colors ${form.watch("preferences.defaultPlatforms").includes(platform.value)
+                                                        ? "border-primary bg-primary/5"
+                                                        : "border-border hover:border-primary/50"
+                                                        }`}
+                                                    onClick={() => {
+                                                        if (form.watch("preferences.defaultPlatforms").includes(platform.value)) {
+                                                            removePlatform(platform.value)
+                                                        } else {
+                                                            addPlatform(platform.value)
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        <div>
+                                                            <h3 className="font-medium">{platform.label}</h3>
+                                                            <p className="text-sm text-muted-foreground mt-1">
+                                                                {platform.description}
+                                                            </p>
+                                                        </div>
+                                                        {form.watch("preferences.defaultPlatforms").includes(platform.value) && (
+                                                            <CheckCircle className="h-5 w-5 text-primary" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Step 2: Brand Colors */}
+                        {step === 2 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center">
+                                        <Palette className="h-5 w-5 mr-2" />
+                                        Brand Colors
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Define your visual identity with brand colors.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
                                     {/* Colors */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <FormField
                                             control={form.control}
-                                            name="brandKit.primaryColor"
+                                            name="preferences.primaryColor"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Primary Color</FormLabel>
@@ -388,7 +342,7 @@ export default function CompanySetupPage() {
 
                                         <FormField
                                             control={form.control}
-                                            name="brandKit.secondaryColor"
+                                            name="preferences.secondaryColor"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Secondary Color</FormLabel>
@@ -413,7 +367,7 @@ export default function CompanySetupPage() {
 
                                         <FormField
                                             control={form.control}
-                                            name="brandKit.accentColor"
+                                            name="preferences.accentColor"
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Accent Color</FormLabel>
@@ -443,15 +397,15 @@ export default function CompanySetupPage() {
                                         <div className="flex space-x-2">
                                             <div
                                                 className="w-16 h-16 rounded-lg border"
-                                                style={{ backgroundColor: form.watch("brandKit.primaryColor") }}
+                                                style={{ backgroundColor: form.watch("preferences.primaryColor") }}
                                             />
                                             <div
                                                 className="w-16 h-16 rounded-lg border"
-                                                style={{ backgroundColor: form.watch("brandKit.secondaryColor") }}
+                                                style={{ backgroundColor: form.watch("preferences.secondaryColor") }}
                                             />
                                             <div
                                                 className="w-16 h-16 rounded-lg border"
-                                                style={{ backgroundColor: form.watch("brandKit.accentColor") }}
+                                                style={{ backgroundColor: form.watch("preferences.accentColor") }}
                                             />
                                         </div>
                                     </div>
@@ -459,87 +413,49 @@ export default function CompanySetupPage() {
                             </Card>
                         )}
 
-                        {/* Step 4: Typography */}
-                        {step === 4 && (
+                        {/* Step 3: API Keys */}
+                        {step === 3 && (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Typography</CardTitle>
+                                    <CardTitle className="flex items-center">
+                                        <Key className="h-5 w-5 mr-2" />
+                                        API Keys (Optional)
+                                    </CardTitle>
                                     <CardDescription>
-                                        Choose fonts that represent your brand personality.
+                                        Add your API keys to enable AI content generation. You can add these later in settings.
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name="brandKit.fonts.primary"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Primary Font</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select primary font" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {fontOptions.map((font) => (
-                                                                <SelectItem key={font} value={font}>
-                                                                    <span style={{ fontFamily: font }}>{font}</span>
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                <CardContent className="space-y-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="apiKeys.geminiKey"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Google Gemini API Key</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="password"
+                                                        placeholder="AI..."
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Required for AI-powered content generation
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                                        <FormField
-                                            control={form.control}
-                                            name="brandKit.fonts.secondary"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Secondary Font (Optional)</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select secondary font" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="">None</SelectItem>
-                                                            {fontOptions.map((font) => (
-                                                                <SelectItem key={font} value={font}>
-                                                                    <span style={{ fontFamily: font }}>{font}</span>
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-
-                                    {/* Font Preview */}
-                                    <div className="p-4 rounded-lg border bg-muted/50">
-                                        <p className="text-sm font-medium mb-3">Typography Preview</p>
-                                        <div className="space-y-2">
-                                            <h2
-                                                className="text-2xl font-bold"
-                                                style={{ fontFamily: form.watch("brandKit.fonts.primary") }}
-                                            >
-                                                Your Company Name
-                                            </h2>
-                                            <p
-                                                className="text-muted-foreground"
-                                                style={{
-                                                    fontFamily: form.watch("brandKit.fonts.secondary") || form.watch("brandKit.fonts.primary")
-                                                }}
-                                            >
-                                                This is how your brand text will look in social media posts.
-                                            </p>
+                                    <div className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-950/20">
+                                        <div className="flex items-start space-x-3">
+                                            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                                            <div>
+                                                <h3 className="font-medium text-blue-900 dark:text-blue-100">Security Note</h3>
+                                                <p className="text-sm text-blue-700 dark:text-blue-200 mt-1">
+                                                    Your API keys are encrypted and stored securely. They are only used for content generation and never shared.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -551,7 +467,7 @@ export default function CompanySetupPage() {
                                                 <div>
                                                     <h3 className="font-medium text-primary">Ready to Create</h3>
                                                     <p className="text-sm text-muted-foreground mt-1">
-                                                        Your brand profile is complete! You can now generate AI-powered social media content
+                                                        Your profile setup is complete! You can now generate AI-powered social media content
                                                         that matches your brand identity.
                                                     </p>
                                                 </div>
@@ -583,10 +499,10 @@ export default function CompanySetupPage() {
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                Creating...
+                                                Setting up...
                                             </>
                                         ) : (
-                                            "Create Company Profile"
+                                            "Complete Setup"
                                         )}
                                     </Button>
                                 )}

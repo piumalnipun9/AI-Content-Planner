@@ -18,18 +18,22 @@ import {
   CheckCircle,
   AlertCircle,
   Sparkles,
+  MoreHorizontal,
+  Edit,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 // Recent activity and scheduled posts data
 const recentActivity = [
   {
     id: 1,
     type: 'published',
-    content: '🚀 Exciting news! We\'re launching our new product line next week...',
+    content: 'Exciting news! We\'re launching our new product line next week...',
     platform: 'instagram',
     timestamp: '2 hours ago',
     engagement: { likes: 245, comments: 18 },
@@ -37,14 +41,14 @@ const recentActivity = [
   {
     id: 2,
     type: 'scheduled',
-    content: '🌟 Monday Motivation Alert! New week, new opportunities to shine...',
+    content: 'Monday Motivation Alert! New week, new opportunities to shine...',
     platform: 'facebook',
     timestamp: 'Tomorrow at 9:00 AM',
   },
   {
     id: 3,
     type: 'generated',
-    content: '💪 FITNESS TIP #1: Stay Hydrated! Drinking enough water boosts...',
+    content: 'FITNESS TIP #1: Stay Hydrated! Drinking enough water boosts...',
     platform: 'instagram',
     timestamp: '1 day ago',
   },
@@ -61,21 +65,21 @@ const recentActivity = [
 const upcomingPosts = [
   {
     id: 1,
-    content: '🌟 Monday Motivation Alert! New week, new opportunities...',
+    content: 'Monday Motivation Alert! New week, new opportunities...',
     platform: 'instagram',
     scheduledTime: 'Today at 3:00 PM',
     status: 'scheduled',
   },
   {
     id: 2,
-    content: '💪 FITNESS TIP #2: Proper form is everything! Focus on...',
+    content: 'FITNESS TIP #2: Proper form is everything! Focus on...',
     platform: 'facebook',
     scheduledTime: 'Tomorrow at 6:00 PM',
     status: 'scheduled',
   },
   {
     id: 3,
-    content: '🎯 Weekly goal setting: What are you aiming to achieve...',
+    content: 'Weekly goal setting: What are you aiming to achieve...',
     platform: 'instagram',
     scheduledTime: 'Jan 18 at 10:00 AM',
     status: 'scheduled',
@@ -408,16 +412,16 @@ function PostCard({ post, showDate = false }: { post: any; showDate?: boolean })
         {post.status === "published" && (
           <div className="flex items-center gap-6 text-sm font-medium pt-3 border-t border-border">
             <span className="flex items-center gap-2 text-red-500">
-              <span>❤️</span> {post.engagement.likes}
+              <span>♥</span> {post.engagement.likes}
             </span>
             <span className="flex items-center gap-2 text-blue-500">
               <span>💬</span> {post.engagement.comments}
             </span>
             <span className="flex items-center gap-2 text-green-600">
-              <span>🔄</span> {post.engagement.shares}
+              <span>↻</span> {post.engagement.shares}
             </span>
           </div>
-        )})
+        )}
       </CardContent>
     </Card>
   )
@@ -461,14 +465,14 @@ function ActivityItem({ activity }: { activity: any }) {
         {activity.engagement && (
           <div className="flex items-center space-x-4 text-xs text-muted-foreground">
             <span className="flex items-center">
-              ❤️ {activity.engagement.likes}
+              ♥ {activity.engagement.likes}
             </span>
             <span className="flex items-center">
               💬 {activity.engagement.comments}
             </span>
             {activity.engagement.shares && (
               <span className="flex items-center">
-                🔄 {activity.engagement.shares}
+                ↻ {activity.engagement.shares}
               </span>
             )}
           </div>
@@ -499,4 +503,19 @@ function UpcomingPostItem({ post }: { post: any }) {
       </div>
     </div>
   )
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "published":
+      return "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800"
+    case "scheduled":
+      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800"
+    case "draft":
+      return "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800"
+    case "failed":
+      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800"
+    default:
+      return "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800"
+  }
 }

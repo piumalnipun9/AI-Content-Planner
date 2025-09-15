@@ -33,12 +33,7 @@ export async function POST(request: NextRequest) {
         const post = await prisma.post.findFirst({
             where: {
                 id: validatedData.postId,
-                company: {
-                    userId: user.id
-                }
-            },
-            include: {
-                company: true,
+                userId: user.id
             }
         })
 
@@ -56,11 +51,11 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Get Canva API key for the company
+        // Get Canva API key for the user
         const canvaApiKey = await prisma.apiKey.findFirst({
             where: {
-                companyId: post.company.id,
-                provider: 'canva',
+                userId: user.id,
+                provider: 'CANVA',
                 isActive: true,
             }
         })

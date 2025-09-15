@@ -3,7 +3,7 @@
  * Handles all API communication with type safety
  */
 
-import { CreateCompanyInput, CreateProductInput, GeneratePostsInput } from '@/lib/validations'
+import { GeneratePostsInput } from '@/lib/validations'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -46,13 +46,21 @@ class ApiClient {
     ): Promise<T> {
         const url = `${this.baseUrl}/api${endpoint}`
 
-        const headers: HeadersInit = {
+        const headers: Record<string, string> = {
             'Content-Type': 'application/json',
-            ...options.headers,
+        }
+
+        // Safely merge headers
+        if (options.headers) {
+            Object.entries(options.headers).forEach(([key, value]) => {
+                if (typeof value === 'string') {
+                    headers[key] = value
+                }
+            })
         }
 
         if (this.token) {
-            headers.Authorization = `Bearer ${this.token}`
+            headers['Authorization'] = `Bearer ${this.token}`
         }
 
         const config: RequestInit = {
@@ -106,108 +114,8 @@ class ApiClient {
         return response
     }
 
-    // Company endpoints
-    async getCompanies() {
-        return this.request<{
-            companies: Array<{
-                id: string
-                name: string
-                description: string
-                tone: string[]
-                brandKit: any
-                createdAt: string
-                _count: {
-                    products: number
-                    posts: number
-                    templates: number
-                }
-            }>
-        }>('/companies')
-    }
-
-    async createCompany(data: CreateCompanyInput) {
-        return this.request<{
-            message: string
-            company: {
-                id: string
-                name: string
-                description: string
-                tone: string[]
-                brandKit: any
-                createdAt: string
-            }
-        }>('/companies', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        })
-    }
-
-    async getCompany(id: string) {
-        return this.request<{
-            company: {
-                id: string
-                name: string
-                description: string
-                tone: string[]
-                brandKit: any
-                createdAt: string
-                products: any[]
-                posts: any[]
-                _count: {
-                    products: number
-                    posts: number
-                    templates: number
-                }
-            }
-        }>(`/companies/${id}`)
-    }
-
-    // Product endpoints
-    async getProducts(companyId?: string) {
-        const query = companyId ? `?companyId=${companyId}` : ''
-        return this.request<{
-            products: Array<{
-                id: string
-                sku: string
-                title: string
-                description: string
-                price: number
-                currency: string
-                images: string[]
-                features: string[]
-                categories: string[]
-                tags: string[]
-                isActive: boolean
-                createdAt: string
-            }>
-        }>(`/products${query}`)
-    }
-
-    async createProduct(data: CreateProductInput & { companyId: string }) {
-        return this.request<{
-            message: string
-            product: {
-                id: string
-                sku: string
-                title: string
-                description: string
-                price: number
-                currency: string
-                images: string[]
-                features: string[]
-                categories: string[]
-                tags: string[]
-                createdAt: string
-            }
-        }>('/products', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        })
-    }
-
     // Posts endpoints
-    async getPosts(companyId?: string) {
-        const query = companyId ? `?companyId=${companyId}` : ''
+    async getPosts() {
         return this.request<{
             posts: Array<{
                 id: string
@@ -226,7 +134,7 @@ class ApiClient {
                 scheduledAt?: string
                 publishedAt?: string
             }>
-        }>(`/posts${query}`)
+        }>('/posts')
     }
 
     async generatePosts(data: GeneratePostsInput) {
@@ -246,10 +154,7 @@ class ApiClient {
                 status: string
                 createdAt: string
             }>
-            company: {
-                id: string
-                name: string
-            }
+            provider: string
         }>('/content/generate', {
             method: 'POST',
             body: JSON.stringify(data),

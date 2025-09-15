@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { generatePostsSchema } from '@/lib/validations'
 import { getAuthUser, createAuthResponse } from '@/lib/auth'
 import { checkRateLimit, createRateLimitResponse } from '@/lib/rate-limit'
-import { OpenAIService, PostGenerationRequest } from '@/lib/openai-service'
+import { AIService, PostGenerationRequest, AIProvider } from '@/lib/ai-service'
 
 export async function POST(request: NextRequest) {
     try {
@@ -23,37 +23,8 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const validatedData = generatePostsSchema.parse(body)
 
-        // Get company details and verify ownership
-        const company = await prisma.company.findFirst({
-            where: {
-                id: validatedData.companyId,
-                userId: user.id
-            },
-            include: {
-                products: validatedData.productIds ? {
-                    where: {
-                        id: { in: validatedData.productIds }
-                    }
-                } : false
-            }
-        })
-
-        if (!company) {
-            return Response.json(
-                { error: 'Company not found or access denied' },
-                { status: 404 }
-            )
-        }
-
-        const brandKit = company.brandKit as any
-        if (!brandKit.primaryColor || !brandKit.secondaryColor) {
-            return Response.json(
-                { error: 'Company brand kit is incomplete. Please update brand colors.' },
-                { status: 400 }
-            )
-        }
-
         const generatedPosts = []
+        const aiProvider = 'GEMINI' // Only use Gemini
 
         // Generate posts for each platform and content type combination
         for (const platform of validatedData.platforms) {
@@ -61,42 +32,25 @@ export async function POST(request: NextRequest) {
                 const postsToGenerate = Math.ceil(validatedData.postCount / (validatedData.platforms.length * validatedData.contentTypes.length))
 
                 for (let i = 0; i < postsToGenerate && generatedPosts.length < validatedData.postCount; i++) {
-                    // Select random product if productIds provided
-                    const selectedProduct = company.products && company.products.length > 0
-                        ? company.products[Math.floor(Math.random() * company.products.length)]
-                        : undefined
-
                     const format = getOptimalFormat(platform)
 
                     const generationRequest: PostGenerationRequest = {
-                        companyId: company.id,
-                        companyName: company.name,
-                        companyDescription: company.description,
-                        brandTone: company.tone,
-                        brandColors: {
-                            primary: brandKit.primaryColor,
-                            secondary: brandKit.secondaryColor,
-                            accent: brandKit.accentColor || brandKit.primaryColor,
-                        },
+                        userId: user.id,
+                        prompt: validatedData.prompt,
+                        brandTone: validatedData.brandTone,
                         contentType,
                         platform,
                         format,
-                        productContext: selectedProduct ? {
-                            title: selectedProduct.title,
-                            description: selectedProduct.description,
-                            features: selectedProduct.features,
-                            price: selectedProduct.price,
-                            currency: selectedProduct.currency,
-                        } : undefined,
+                        additionalContext: `Generate content variation ${i + 1} for ${platform} ${contentType}`
                     }
 
                     try {
-                        const generatedContent = await OpenAIService.generatePostContent(generationRequest)
+                        const generatedContent = await AIService.generatePostContent(generationRequest, aiProvider)
 
                         // Save to database
                         const post = await prisma.post.create({
                             data: {
-                                companyId: company.id,
+                                userId: user.id,
                                 title: generatedContent.title,
                                 platform: generatedContent.platform as any,
                                 format: generatedContent.format as any,
@@ -106,7 +60,6 @@ export async function POST(request: NextRequest) {
                                 hashtags: generatedContent.hashtags,
                                 cta: generatedContent.cta,
                                 visualBrief: generatedContent.visualBrief,
-                                productRef: selectedProduct?.id,
                                 altText: generatedContent.altText,
                                 status: 'GENERATED',
                             }
@@ -120,25 +73,22 @@ export async function POST(request: NextRequest) {
                     }
 
                     // Small delay to avoid overwhelming the API
-                    await new Promise(resolve => setTimeout(resolve, 500))
+                    await new Promise(resolve => setTimeout(resolve, 1000))
                 }
             }
         }
 
         if (generatedPosts.length === 0) {
             return Response.json(
-                { error: 'Failed to generate any posts. Please try again.' },
+                { error: 'Failed to generate any posts. Please check your API keys and try again.' },
                 { status: 500 }
             )
         }
 
         return Response.json({
-            message: `Successfully generated ${generatedPosts.length} posts`,
+            message: `Successfully generated ${generatedPosts.length} posts using Gemini`,
             posts: generatedPosts,
-            company: {
-                id: company.id,
-                name: company.name,
-            }
+            provider: 'GEMINI'
         }, { status: 201 })
 
     } catch (error: any) {
@@ -152,14 +102,14 @@ export async function POST(request: NextRequest) {
         }
 
         return Response.json(
-            { error: 'Internal server error' },
+            { error: 'Internal server error', details: error.message },
             { status: 500 }
         )
     }
 }
 
-function getOptimalFormat(platform: string): string {
-    const formatMap: Record<string, string> = {
+function getOptimalFormat(platform: string): 'SQUARE' | 'VERTICAL' | 'HORIZONTAL' | 'CAROUSEL' | 'REEL' | 'STORY' {
+    const formatMap: Record<string, 'SQUARE' | 'VERTICAL' | 'HORIZONTAL' | 'CAROUSEL' | 'REEL' | 'STORY'> = {
         'INSTAGRAM': 'SQUARE',
         'FACEBOOK': 'HORIZONTAL',
         'TWITTER': 'HORIZONTAL',

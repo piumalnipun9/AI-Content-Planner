@@ -11,13 +11,15 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  posts     Post[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String?
+  password       String
+  posts          Post[]
+  apiKeys        ApiKey[]
+  socialAccounts SocialAccount[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@map("users")
 }
@@ -54,11 +56,44 @@ model ContentGeneration {
   prompt      String
   response    Json
   tokensUsed  Int
-  provider    String   // "openai", etc.
-  model       String   // "gpt-4", etc.
+  provider    String   // "openai", "gemini", etc.
+  model       String   // "gpt-4", "gemini-1.5-flash", etc.
   createdAt   DateTime @default(now())
 
   @@map("content_generations")
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  ApiProvider
+  keyName   String
+  keyValue  String   // Should be encrypted in production
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@map("api_keys")
+}
+
+model SocialAccount {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform    PostPlatform
+  accountId   String   // Platform-specific account ID
+  username    String
+  accessToken String   // Should be encrypted in production
+  refreshToken String? // Should be encrypted in production
+  tokenExpiry DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, platform, accountId])
+  @@map("social_accounts")
 }
 
 enum PostPlatform {
@@ -86,4 +121,11 @@ enum PostStatus {
   PUBLISHED
   FAILED
   ARCHIVED
+}
+
+enum ApiProvider {
+  GEMINI
+  CANVA
+  META
+  PINECONE
 }

@@ -3,19 +3,16 @@ import { NextRequest } from 'next/server'
 
 // Create different rate limiters for different endpoints
 const authLimiter = new RateLimiterMemory({
-    keyGen: (req: NextRequest) => getClientIp(req),
     points: 5, // 5 attempts
     duration: 900, // per 15 minutes
 })
 
 const apiLimiter = new RateLimiterMemory({
-    keyGen: (req: NextRequest) => getClientIp(req),
     points: 100, // 100 requests
     duration: 900, // per 15 minutes
 })
 
 const uploadLimiter = new RateLimiterMemory({
-    keyGen: (req: NextRequest) => getClientIp(req),
     points: 10, // 10 uploads
     duration: 3600, // per hour
 })
@@ -29,9 +26,10 @@ function getClientIp(req: NextRequest): string {
 
 export async function checkRateLimit(req: NextRequest, type: 'auth' | 'api' | 'upload' = 'api') {
     const limiter = type === 'auth' ? authLimiter : type === 'upload' ? uploadLimiter : apiLimiter
+    const clientIp = getClientIp(req)
 
     try {
-        await limiter.consume(req)
+        await limiter.consume(clientIp)
         return { success: true }
     } catch (rejRes: any) {
         const remainingPoints = rejRes?.remainingPoints || 0

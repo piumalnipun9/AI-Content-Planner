@@ -190,7 +190,6 @@ export function Navigation() {
                                                 onClick={() => setIsMobileMenuOpen(false)}
                                                 className="block px-3 py-2 text-sm text-muted-foreground hover:text-primary transition-colors"
                                             >
-                                                <Sparkles className="h-4 w-4 inline mr-2" />
                                                 Start Creating
                                             </Link>
                                             <Link

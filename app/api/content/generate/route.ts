@@ -21,10 +21,10 @@ export async function POST(request: NextRequest) {
 
         // Parse and validate request body
         const body = await request.json()
-        const validatedData = generatePostsSchema.parse(body)
+    const validatedData = generatePostsSchema.parse(body)
 
-        const generatedPosts = []
-        const aiProvider = 'GEMINI' // Only use Gemini
+    const generatedPosts = []
+    const aiProvider = (validatedData.aiProvider || 'GEMINI') as AIProvider
 
         // Generate posts for each platform and content type combination
         for (const platform of validatedData.platforms) {
@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
                     }
 
                     try {
-                        const generatedContent = await AIService.generatePostContent(generationRequest, aiProvider)
+                        const providerToUse: AIProvider = (validatedData.useRag || aiProvider === 'RAG') ? 'RAG' : 'GEMINI'
+                        const generatedContent = await AIService.generatePostContent(generationRequest, providerToUse)
 
                         // Save to database
                         const post = await prisma.post.create({
@@ -86,9 +87,9 @@ export async function POST(request: NextRequest) {
         }
 
         return Response.json({
-            message: `Successfully generated ${generatedPosts.length} posts using Gemini`,
+            message: `Successfully generated ${generatedPosts.length} posts using ${aiProvider}`,
             posts: generatedPosts,
-            provider: 'GEMINI'
+            provider: aiProvider
         }, { status: 201 })
 
     } catch (error: any) {

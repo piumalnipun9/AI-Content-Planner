@@ -18,7 +18,7 @@ export const loginSchema = z.object({
 // Post schemas
 export const PostPlatformEnum = z.enum(['INSTAGRAM', 'FACEBOOK', 'TWITTER', 'TIKTOK', 'YOUTUBE_SHORTS', 'LINKEDIN'])
 export const PostFormatEnum = z.enum(['SQUARE', 'VERTICAL', 'HORIZONTAL', 'CAROUSEL', 'REEL', 'STORY'])
-export const ApiProviderEnum = z.enum(['GEMINI', 'CANVA', 'META', 'PINECONE'])
+export const ApiProviderEnum = z.enum(['GEMINI', 'CANVA', 'META', 'PINECONE', 'RAG'])
 
 export const generatePostsSchema = z.object({
     postCount: z.number().min(1).max(20, 'Maximum 20 posts per request'),
@@ -27,6 +27,7 @@ export const generatePostsSchema = z.object({
     prompt: z.string().min(10, 'Prompt must be at least 10 characters'),
     brandTone: z.array(z.string()).default(['professional', 'friendly']),
     aiProvider: ApiProviderEnum.default('GEMINI'),
+    useRag: z.boolean().optional().default(false)
 })
 
 export const createPostSchema = z.object({
@@ -80,3 +81,18 @@ export type CreatePostInput = z.infer<typeof createPostSchema>
 export type CreateTemplateInput = z.infer<typeof createTemplateSchema>
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>
 export type CreateSocialAccountInput = z.infer<typeof createSocialAccountSchema>
+
+// RAG-specific schemas
+export const ragIngestSchema = z.object({
+    text: z.string().min(50, 'Provide at least 50 characters of brand text'),
+    metadata: z.record(z.any()).optional(),
+})
+
+export const ragGenerateSchema = z.object({
+    prompt: z.string().min(10),
+    platform: PostPlatformEnum,
+    contentType: z.enum(['product_showcase', 'brand_awareness', 'educational', 'behind_scenes', 'user_generated']),
+    format: PostFormatEnum,
+    brandTone: z.array(z.string()).default(['professional', 'friendly']),
+    topK: z.number().min(1).max(8).default(4)
+})

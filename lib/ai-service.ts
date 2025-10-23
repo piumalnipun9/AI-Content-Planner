@@ -1,7 +1,9 @@
 import { GeminiService } from './gemini-service'
 import { prisma } from './prisma'
+import { generateWithRag } from '@/lib/rag/chain'
+import { runGenerationGraph } from '@/lib/rag/graph'
 
-export type AIProvider = 'GEMINI'
+export type AIProvider = 'GEMINI' | 'RAG'
 
 // Re-export types from gemini-service
 export interface PostGenerationRequest {
@@ -38,10 +40,12 @@ interface AIServiceConfig {
 
 export class AIService {
     private static async getUserApiKey(userId: string, provider: AIProvider): Promise<string | null> {
+        // Only providers stored in Prisma ApiProvider enum can be queried
+        if (provider !== 'GEMINI') return null
         const apiKey = await prisma.apiKey.findFirst({
             where: {
                 userId,
-                provider,
+                provider: 'GEMINI' as any,
                 isActive: true
             }
         })
@@ -56,8 +60,15 @@ export class AIService {
         const userApiKey = await this.getUserApiKey(request.userId, provider)
 
         try {
-            const geminiService = new GeminiService(userApiKey || undefined)
-            return await geminiService.generatePostContent(request)
+            if (provider === 'RAG') {
+                // Prefer the LangGraph orchestrator to demonstrate graph usage
+                return await runGenerationGraph({ ...request, useRag: true })
+                // Alternative: direct RAG chain without graph
+                // return await generateWithRag(request)
+            } else {
+                const geminiService = new GeminiService(userApiKey || undefined)
+                return await geminiService.generatePostContent(request)
+            }
         } catch (error: any) {
             console.error('Gemini generation failed:', error)
             throw error
@@ -92,8 +103,12 @@ export class AIService {
     static getAvailableProviders(): Promise<AIProvider[]> {
         const providers: AIProvider[] = []
 
-        if (process.env.GEMINI_API_KEY) {
+        if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
             providers.push('GEMINI')
+        }
+
+        if ((process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) && process.env.PINECONE_API_KEY && process.env.PINECONE_INDEX) {
+            providers.push('RAG')
         }
 
         return Promise.resolve(providers)
@@ -105,11 +120,12 @@ export class AIService {
         keyName: string,
         keyValue: string
     ): Promise<void> {
+        if (provider !== 'GEMINI') throw new Error('Only GEMINI API keys are storable')
         await prisma.apiKey.upsert({
             where: {
                 userId_provider: {
                     userId,
-                    provider
+                    provider: 'GEMINI' as any
                 }
             },
             update: {
@@ -120,7 +136,7 @@ export class AIService {
             },
             create: {
                 userId,
-                provider,
+                provider: 'GEMINI' as any,
                 keyName,
                 keyValue, // In production, encrypt this
                 isActive: true
@@ -130,4 +146,3 @@ export class AIService {
 }
 
 export default AIService
-export type { PostGenerationRequest, GeneratedPostContent }

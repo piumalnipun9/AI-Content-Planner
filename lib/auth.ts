@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 import { NextRequest } from 'next/server'
 
 export interface AuthUser {

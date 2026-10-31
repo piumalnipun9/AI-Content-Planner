@@ -1,4 +1,5 @@
 import { db } from "@/lib/db"
+import { inBackground } from "@/lib/background"
 import type { Pillar, Platform, Post } from "@/lib/generated/prisma/client"
 import { deleteImage, saveImage } from "@/lib/media"
 import { processImageQueue, publishOne } from "@/lib/jobs"
@@ -95,7 +96,7 @@ export async function requestNewImage(userId: string, id: string, imagePrompt?: 
     where: { id },
     data: { imageState: "PENDING", imagePrompt: imagePrompt?.trim() || post.imagePrompt },
   })
-  void processImageQueue()
+  inBackground(processImageQueue)
   return updated
 }
 

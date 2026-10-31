@@ -2,6 +2,9 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { userForToken } from "@/lib/api-tokens"
 import { createMcpServer } from "@/lib/mcp/server"
 
+// Content plans (Gemini) and Instagram publishing can take a minute or more
+export const maxDuration = 300
+
 /**
  * MCP endpoint (Streamable HTTP, stateless). Authenticate with
  * `Authorization: Bearer <token>` using a token created in Settings → Agent access.

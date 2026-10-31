@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+storage
+node_modules
+.next
+lib/generated
+.claude
+.agents
+.windsurf

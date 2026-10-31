@@ -1,6 +1,9 @@
 import type { NextRequest } from "next/server"
 import { publishDuePosts, processImageQueue, refreshMetrics, runAutopilot } from "@/lib/jobs"
 
+// Publishing to Instagram waits for Meta to process each image
+export const maxDuration = 300
+
 /**
  * For hosts without a long-running process (e.g. Vercel Cron): call every few minutes with
  * `Authorization: Bearer $CRON_SECRET`. Self-hosted servers run these jobs automatically.

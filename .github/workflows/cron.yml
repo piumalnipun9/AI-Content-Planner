@@ -1,0 +1,26 @@
+# Runs Postpilot's background jobs (publish due posts, render images, refresh metrics, autopilot) on hosts
+# without a long-running process. GitHub runs schedules on a best-effort basis, usually within a few minutes.
+# Needs repository variable APP_URL and secret CRON_SECRET (the same value as the app's CRON_SECRET).
+name: Postpilot jobs
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: postpilot-jobs
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Call /api/cron
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then echo "APP_URL or CRON_SECRET not configured"; exit 0; fi
+          curl --fail-with-body -sS --max-time 320 -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron"

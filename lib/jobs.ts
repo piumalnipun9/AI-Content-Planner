@@ -1,4 +1,5 @@
 import { db } from "@/lib/db"
+import { inBackground } from "@/lib/background"
 import { env } from "@/lib/env"
 import type { Brand, Platform, Post } from "@/lib/generated/prisma/client"
 import { planPosts, imagePromptFor } from "@/lib/ai/content"
@@ -73,7 +74,7 @@ export async function createCampaign(input: CampaignInput) {
     },
   })
 
-  void processImageQueue()
+  inBackground(processImageQueue)
   return campaign
 }
 

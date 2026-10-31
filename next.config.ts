@@ -10,6 +10,8 @@ const appHost = (() => {
 })()
 
 const nextConfig: NextConfig = {
+  // Hide the Next.js "N" badge the dev server shows on every page (errors still surface)
+  devIndicators: false,
   allowedDevOrigins: appHost && appHost !== "localhost" ? [appHost] : [],
   // Native/server-only packages used by the scheduler and image pipeline
   serverExternalPackages: ["sharp", "pg"],

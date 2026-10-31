@@ -1,6 +1,6 @@
 # Runs Postpilot's background jobs (publish due posts, render images, refresh metrics, autopilot) on hosts
 # without a long-running process. GitHub runs schedules on a best-effort basis, usually within a few minutes.
-# Needs secret CRON_SECRET; set repository variable APP_URL to override the default address (the same value as the app's CRON_SECRET).
+# Needs secret CRON_SECRET (the same value as the app's CRON_SECRET). Set repository variable APP_URL to override the default address.
 name: Postpilot jobs
 
 on:

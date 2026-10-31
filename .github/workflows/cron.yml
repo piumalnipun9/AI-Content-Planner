@@ -1,6 +1,6 @@
 # Runs Postpilot's background jobs (publish due posts, render images, refresh metrics, autopilot) on hosts
 # without a long-running process. GitHub runs schedules on a best-effort basis, usually within a few minutes.
-# Needs repository variable APP_URL and secret CRON_SECRET (the same value as the app's CRON_SECRET).
+# Needs secret CRON_SECRET; set repository variable APP_URL to override the default address (the same value as the app's CRON_SECRET).
 name: Postpilot jobs
 
 on:
@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Call /api/cron
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          APP_URL: ${{ vars.APP_URL || 'https://postpilot-phi-five.vercel.app' }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then echo "APP_URL or CRON_SECRET not configured"; exit 0; fi

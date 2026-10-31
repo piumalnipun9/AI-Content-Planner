@@ -1,35 +1,22 @@
-import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
-import { Analytics } from "@vercel/analytics/next"
-import { Suspense } from "react"
+import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
-import { Navigation } from "@/components/navigation"
 import "./globals.css"
 
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
+
 export const metadata: Metadata = {
-  title: "AI Social Media Scheduler",
-  description: "Generate, design, and schedule AI-powered social media content with Canva integration",
-  generator: "v0.app",
+  title: { default: "Postpilot", template: "%s · Postpilot" },
+  description: "AI social media planner: create, publish and learn from your Facebook and Instagram content.",
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="light">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <div className="min-h-screen bg-background">
-          <Navigation />
-          <main className="pt-16">
-            <Suspense fallback={null}>{children}</Suspense>
-          </main>
-        </div>
-        <Toaster />
-        <Analytics />
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <body className="min-h-full">
+        {children}
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   )

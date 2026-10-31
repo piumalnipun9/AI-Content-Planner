@@ -1,361 +1,114 @@
-﻿# AI-Powered Content Planning Platform
+# Postpilot: AI social media planner
 
-An intelligent social media content planning platform that revolutionizes how businesses create, schedule, and manage their social media presence through conversational AI.
+Postpilot plans, writes, designs, publishes and learns from Facebook and Instagram content. One account can run several brands, one per Facebook Page.
 
-Short description: A Next.js + TypeScript app that generates, schedules, and publishes on-brand social media content using Google Gemini, optional RAG (Pinecone + embeddings), and small orchestration layers.
+0. **Brands.** Each brand is linked to one Facebook Page and the Instagram account connected to it. A brand has its own profile, posts, calendar, analytics, strategy and autopilot. A single Facebook login covers all your Pages. The scheduler publishes, measures and runs autopilot for every brand at the same time. Switch brands from the sidebar, or see them side by side under **All brands**.
+1. **Brand profile.** You describe each business once: audience, tone, offers and visual style.
+2. **Create.** Gemini writes a content plan (captions, hashtags, posting times, content pillars) and generates an image for every post.
+3. **Publish.** Posts go to your Facebook Page and the linked Instagram Business account, either right away or at the scheduled time.
+4. **Measure.** Reach, views, likes, comments, shares and saves are pulled back from the Graph API every few hours.
+5. **Improve.** The AI strategist analyses the results (by pillar, platform, weekday and time of day) and writes a strategy. Every new plan follows that strategy and learns from your top posts.
+6. **Autopilot (optional).** When it's on, the app plans and schedules each coming week by itself and refreshes the strategy weekly.
+7. **Agent access (MCP).** Any MCP-capable AI agent can drive all of the above through `/api/mcp`.
 
-![AI Social Platform](https://img.shields.io/badge/AI%20Powered-Content%20Creation-10b956)
-![Next.js](https://img.shields.io/badge/Next.js-14.2-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4.1-38bdf8)
+## MCP server
 
-## 🛠️ Technology Stack
+Postpilot exposes a [Model Context Protocol](https://modelcontextprotocol.io) server at `$APP_URL/api/mcp`. It uses Streamable HTTP and is stateless.
 
-### Frontend
+Each request authenticates with a personal token from **Settings → Agent access**, sent as `Authorization: Bearer pp_…`. The agent acts as that user. Revoke the token to cut off access.
 
-- **Framework**: Next.js 14.2.16 with App Router
-- **Language**: TypeScript 5.x
-- **Styling**: Tailwind CSS 4.1.9
-- **UI Components**: Radix UI primitives
-- **Icons**: Lucide React
-- **Forms**: React Hook Form + Zod validation
-- **Charts**: Recharts for analytics
-- **Notifications**: Sonner for toast messages
-
-### Backend
-
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT with bcryptjs
-- **API**: RESTful APIs with Next.js API routes
-- **AI Integration**: Google Gemini for content generation
-- **Retrieval Augmented Generation (RAG)**: LangChain + Pinecone + Google Embeddings
-- **Orchestration**: Minimal LangGraph to route between direct and RAG generation
-- **Social APIs**: Meta Graph API for Facebook/Instagram
-
-### Development Tools
-
-- **Runtime**: Node.js 18+
-- **Package Manager**: npm/pnpm
-- **Linting**: ESLint + TypeScript
-- **Database Tools**: Prisma Studio
-
-## ❓ What we use and why
-
-This project composes a few focused AI building blocks to produce reliable, on-brand social media content. Below is a short explanation of each concept, why we use it, and where it's implemented in the codebase.
-
-- Google Gemini (Generative AI)
-
-  - Role: The primary LLM used to generate post copy, hashtags, CTAs, and visual briefs.
-  - Why: High-quality text generation tuned for conversational and structured outputs.
-  - Files: `lib/gemini-service.ts`, `lib/ai-service.ts`, `app/api/content/generate/route.ts`
-
-- Embeddings (Google Generative Embeddings)
-
-  - Role: Turn brand documents and product text into vectors so we can search for relevant facts.
-  - Why: Embeddings let us ground LLM responses in real internal content to reduce hallucinations.
-  - Files: `lib/rag/vectorstore.ts`, used by `lib/rag/ingest.ts` and `lib/rag/retrieve.ts`
-
-- Pinecone (Vector Store)
-
-  - Role: Stores and searches embeddings (per-user namespaces) for retrieval.
-  - Why: Fast, scalable similarity search for RAG workflows.
-  - Files: `lib/rag/vectorstore.ts`, `lib/rag/ingest.ts`, `lib/rag/retrieve.ts`
-
-- RAG — Retrieval-Augmented Generation
-
-  - Role: Retrieve brand facts for a prompt and feed them into Gemini so output reflects real product/brand information.
-  - Why: Grounded responses, fewer hallucinations, better brand consistency.
-  - Files: `lib/rag/chain.ts`, `lib/rag/retrieve.ts`, `app/api/rag/*`
-
-- LangChain helpers (text splitters, PineconeStore)
-
-  - Role: Utilities for document chunking and interfacing with Pinecone.
-  - Why: Well-known abstractions for building RAG pipelines quickly.
-  - Files: `lib/rag/ingest.ts`, `lib/rag/chain.ts` (uses text splitter and Pinecone integration)
-
-- Orchestration / Graph (decision layer)
-  - Role: Small orchestrator that decides whether to run direct Gemini generation or run the RAG pipeline.
-  - Why: Allows A/Bing between direct creative generation and retrieval-grounded generation; easy to extend into multi-step pipelines.
-  - Files: `lib/rag/graph.ts` (implemented as a small decision graph/orchestrator)
-
-Each component is intentionally modular so you can enable/disable RAG, swap embedding models, or replace the vector store without changing the rest of the app.
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+ installed
-- PostgreSQL database
-- Google API key (Gemini)
-- Pinecone account and index (for RAG)
-- Meta Developer Account (for social media integration)
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/yourusername/ai-social-platform.git
-   cd ai-social-platform
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Configure your `.env` file:
-
-   ```env
-   # Database
-   DATABASE_URL="postgresql://username:password@localhost:5432/ai_social"
-
-   # Authentication
-   JWT_SECRET="your-super-secret-jwt-key"
-
-   # Gemini / Google
-   GEMINI_API_KEY="your-gemini-api-key" # or GOOGLE_API_KEY
-
-   # Pinecone (RAG)
-   PINECONE_API_KEY="your-pinecone-api-key"
-   PINECONE_INDEX="your-pinecone-index-name"
-
-   # Meta APIs (optional)
-   META_APP_ID="your-meta-app-id"
-   META_APP_SECRET="your-meta-app-secret"
-   ```
-
-4. **Set up the database**
-
-   ```bash
-   npm run db:push
-   npm run setup:full
-   ```
-
-5. **Start the development server**
-
-   ```bash
-   npm run dev
-   ```
-
-6. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-## 📁 Project Structure
-
+```bash
+# Claude Code
+claude mcp add --transport http postpilot https://your-app/api/mcp --header "Authorization: Bearer pp_..."
 ```
-ai-social-platform/
-├── app/                    # Next.js App Router pages
-│   ├── studio/            # AI Content Studio
-│   ├── planner/           # Content Calendar
-│   ├── analytics/         # Performance Dashboard
-│   ├── settings/          # Account Settings
-│   └── api/               # API endpoints
-├── components/            # Reusable UI components
-│   ├── ui/                # Base UI components
-│   └── navigation.tsx     # Main navigation
-├── lib/                   # Utility functions
-│   ├── prisma.ts          # Database client
-│   ├── auth.ts            # Authentication utilities
-│   └── openai-service.ts  # AI integration
-├── prisma/                # Database schema and migrations
-├── scripts/               # Database setup scripts
-└── styles/                # Global styles
-```
-
-## 🔧 Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run db:push` - Push database schema changes
-- `npm run db:studio` - Open Prisma Studio
-- `npm run setup` - Populate database with sample data
-- `npm run setup:full` - Full database setup with schema push
-
-## 🤖 AI Features
-
-### Content Generation
-
-- **Smart Prompts**: AI understands context and brand voice
-- **Multi-Platform Optimization**: Automatically adjusts content for different platforms
-- **Hashtag Suggestions**: AI recommends relevant hashtags
-- **Visual Briefs**: Detailed descriptions for accompanying visuals
-- **CTA Optimization**: Suggests effective call-to-action phrases
-
-### Natural Language Scheduling
-
-## 📚 RAG with LangChain + Pinecone + Gemini
-
-We added Retrieval-Augmented Generation (RAG) to ground AI-created posts in your brand knowledge.
-
-What it does:
-
-- Index your brand guidelines, product docs, voice/tone examples into Pinecone using Google Embeddings.
-- Retrieve relevant chunks for each prompt and pass them to Gemini to keep content on-brand and accurate.
-- Optionally orchestrate via a tiny LangGraph that chooses between direct generation and RAG.
-
-Key components (files):
-
-- `lib/rag/vectorstore.ts` – Pinecone client + Google embeddings + per-user namespaces.
-- `lib/rag/ingest.ts` – Ingestion utility to chunk and upsert brand text into Pinecone.
-- `lib/rag/retrieve.ts` – Retrieval helper returning the top-k relevant chunks.
-- `lib/rag/chain.ts` – LangChain pipeline that retrieves context and prompts Gemini (JSON output).
-- `lib/rag/graph.ts` – Minimal LangGraph to route between direct and RAG generation paths.
-- API routes:
-  - `app/api/rag/index/route.ts` – POST brand text to index.
-  - `app/api/rag/generate/route.ts` – Generate a single post using RAG and persist it.
-  - Existing `app/api/content/generate/route.ts` now supports `aiProvider: "RAG"` or `useRag: true`.
-
-Use cases:
-
-- Ground content in brand guidelines (tone, claims, compliance) to prevent hallucinations.
-- Incorporate product facts/specs into posts.
-- Reuse previous high-performing copy elements by indexing internal docs.
-
-### API examples
-
-1. Index your brand doc
-
-POST `/api/rag/index`
 
 ```json
-{
-  "text": "Our brand tone is playful yet professional... We never claim medical benefits...",
-  "metadata": { "source": "brand-guidelines.md", "version": "2025-10-23" }
-}
+// Cursor / VS Code / Windsurf / any mcpServers config
+{ "mcpServers": { "postpilot": { "type": "http", "url": "https://your-app/api/mcp",
+  "headers": { "Authorization": "Bearer pp_..." } } } }
 ```
 
-2. Generate with RAG (single post)
+For stdio-only clients, bridge with `npx -y mcp-remote https://your-app/api/mcp --header "Authorization: Bearer pp_..."`.
 
-POST `/api/rag/generate`
+| Area | Tools |
+|---|---|
+| Brands | `list_brands`, `create_brand`, `get_brand_profile`, `update_brand_profile`, `set_autopilot`, `list_facebook_pages`, `link_brand_page` |
+| Content | `create_content_plan`, `create_post`, `set_post_image`, `list_posts`, `get_post`, `update_post`, `rewrite_caption`, `regenerate_image`, `delete_post` |
+| Publishing | `schedule_post`, `unschedule_post`, `publish_post_now` |
+| Results | `get_analytics`, `refresh_metrics`, `get_strategy`, `run_strategy_analysis` |
 
-```json
-{
-  "prompt": "Launch post for our new eco-friendly bottle",
-  "platform": "INSTAGRAM",
-  "contentType": "brand_awareness",
-  "format": "SQUARE",
-  "brandTone": ["playful", "eco-conscious"],
-  "topK": 4
-}
+Brand-level tools take an optional `brandId` (from `list_brands`), which is required once you have more than one brand. Post tools work by `postId` and use that post's brand. The tools call the same service layer as the web UI (`lib/services/posts.ts`, `lib/jobs.ts`), so the same rules apply. For example, Instagram posts can't be scheduled until their image is ready. Connecting Facebook still has to happen in a browser, because it's an OAuth login.
+
+## Stack
+
+- Next.js 16 (App Router, Server Actions), React 19, Tailwind 4, shadcn/ui
+- PostgreSQL + Prisma 7
+- Google Gemini via `@google/genai`: `gemini-3.5-flash` for text, `gemini-3.1-flash-image` for images (image models need billing enabled; the free tier allows 0 image generations)
+- Meta Graph API v25: Facebook Login, Pages API, Instagram content publishing and insights
+- Background jobs run in-process (`instrumentation.ts` → `lib/scheduler.ts`). `/api/cron` does the same work for serverless hosts.
+
+## Getting started
+
+```bash
+# 1. Database
+docker run -d --name content_planner_db -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=content_planner -p 5434:5432 postgres:16-alpine
+
+# 2. Config
+cp .env.example .env    # fill in SESSION_SECRET, GEMINI_API_KEY, META_APP_ID, META_APP_SECRET, META_CONFIG_ID
+
+# 3. Install, migrate, run
+npm install
+npm run db:deploy
+npm run dev             # http://localhost:3000
 ```
 
-Response includes a persisted `post` with structured fields (title, headline, caption, hashtags, cta, visualBrief, altText).
+Sign up, fill in the brand profile, then connect Facebook in **Settings**.
 
-3. Generate multiple posts with RAG via existing endpoint
+### Meta app setup
 
-POST `/api/content/generate`
+The Settings page shows these steps with your exact redirect URI.
 
-```json
-{
-  "postCount": 4,
-  "platforms": ["INSTAGRAM"],
-  "contentTypes": ["brand_awareness"],
-  "prompt": "Holiday campaign teaser",
-  "brandTone": ["warm", "friendly"],
-  "aiProvider": "RAG",
-  "useRag": true
-}
+1. Your Instagram account must be a **Business or Creator** account linked to your Facebook Page.
+2. At [developers.facebook.com/apps](https://developers.facebook.com/apps), click **Create app**. Choose the Facebook Login for Business / Page management use case (or **Other** → **Business**).
+3. Under **Facebook Login for Business → Settings**, add the Valid OAuth Redirect URI `$APP_URL/api/meta/callback`.
+4. Under **Facebook Login for Business → Configurations**, create a configuration:
+   - token type **User access token**
+   - assets **Pages** and **Instagram accounts**
+   - permissions `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `read_insights`, `business_management`, `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights`
+
+   Copy its ID into `META_CONFIG_ID`.
+5. Under **App settings → Basic**, copy the App ID and App Secret into `META_APP_ID` and `META_APP_SECRET`.
+6. In development mode the app works only for people with a role on it. Publishing for other businesses needs Business Verification and App Review.
+
+### Publishing images needs a public URL
+
+Facebook and Instagram download each image from `APP_URL/media/<file>.jpg`, so `APP_URL` must be a public HTTPS address. For local development, use a tunnel:
+
+```bash
+ngrok http 3000          # then set APP_URL="https://<id>.ngrok-free.app" and restart
 ```
 
-Notes:
+Images are stored on disk in `storage/media/`. They are normalised to 1080×1350 JPEG, because Instagram only accepts JPEG and 4:5 is the largest feed format.
 
-- RAG requires `PINECONE_API_KEY` and `PINECONE_INDEX` env vars. Embeddings use `GEMINI_API_KEY` or `GOOGLE_API_KEY`.
-- Each user is isolated in a Pinecone namespace: `user-<userId>`.
+## Project layout
 
-### How it works (contract + edge cases)
+```
+app/(auth)          login / register
+app/onboarding      brand profile wizard
+app/(app)           dashboard, create, posts, posts/[id], calendar, analytics, settings
+app/actions         server actions (auth, brand, campaigns, posts, meta, strategy)
+app/api/meta        OAuth connect + callback
+app/api/cron        job runner for serverless hosts (Bearer CRON_SECRET)
+app/media/[file]    public image serving for Meta
+lib/ai              Gemini client, content planner, strategist
+lib/meta            Graph client, OAuth, publishing, insights
+lib/jobs.ts         campaign creation, image queue, publishing, metrics, strategy, autopilot
+lib/analytics.ts    engagement aggregation
+prisma/             schema + migrations
+```
 
-Contract:
+## Deploying
 
-- Input: prompt, platform, contentType, format, brandTone (+ optional `topK`).
-- Output: JSON-structured post content suitable for persistence.
-- Error modes: missing env vars; empty index (no context); parsing failure (fallback returns generic but valid structure).
-
-Edge cases handled:
-
-- Empty retrieval: we still generate but note "No context found"; model falls back gracefully.
-- JSON parsing failures: we return a safe minimal structure and store raw text in caption.
-- Large docs: chunked with overlap to retain coherence.
-- "Post this tomorrow at 2PM" ✅
-- "Schedule for next Monday morning" ✅
-- "Share this when my audience is most active" ✅
-- "Create a series for this week" ✅
-
-## 🔌 API Integration
-
-### Supported Platforms
-
-- **Facebook**: Pages, posts, insights
-- **Instagram**: Business accounts, media publishing
-- **Future**: Twitter, LinkedIn, TikTok support planned
-
-### Meta Graph API
-
-The platform integrates with Meta's Graph API for:
-
-- Publishing posts to Facebook and Instagram
-- Retrieving audience insights
-- Scheduling content
-- Performance analytics
-
-## 📊 Analytics & Insights
-
-- **Engagement Metrics**: Likes, comments, shares, reach
-- **Best Posting Times**: AI analyzes when your audience is most active
-- **Content Performance**: Track which types of content perform best
-- **Growth Tracking**: Monitor follower growth and engagement trends
-
-## 🔒 Security & Privacy
-
-- **Secure Authentication**: JWT tokens with refresh mechanism
-- **Data Encryption**: All sensitive data encrypted at rest
-- **API Rate Limiting**: Protected against abuse
-- **Privacy First**: Minimal data collection, transparent usage
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Documentation**: [docs.aisocial.dev](https://docs.aisocial.dev)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/ai-social-platform/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/ai-social-platform/discussions)
-- **Email**: support@aisocial.dev
-
-## 🙏 Acknowledgments
-
-- [OpenAI](https://openai.com) for providing the AI capabilities
-- [Vercel](https://vercel.com) for excellent Next.js hosting
-- [Radix UI](https://radix-ui.com) for accessible UI primitives
-- [Tailwind CSS](https://tailwindcss.com) for the amazing styling framework
-
----
-
-<div align="center">
-  <strong>Built with ❤️ by the AI Social team</strong>
-  <br>
-  <br>
-  <a href="https://aisocial.dev">🌐 Website</a> •
-  <a href="https://twitter.com/aisocialdev">🐦 Twitter</a> •
-  <a href="https://linkedin.com/company/aisocial">💼 LinkedIn</a>
-</div>
-
+- **A long-running server** (VPS, Docker, Railway, Fly): run `npm run build && npm start`. The scheduler starts with the server.
+- **Serverless (Vercel):** set `DISABLE_SCHEDULER=1` and call `GET /api/cron` with `Authorization: Bearer $CRON_SECRET` every 1–5 minutes. Generated images need persistent storage, so you'd swap `lib/media.ts` for S3/R2/Cloudinary.

@@ -1,131 +1,171 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  name           String?
-  password       String
-  posts          Post[]
-  apiKeys        ApiKey[]
-  socialAccounts SocialAccount[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-
-  @@map("users")
+  id           String           @id @default(cuid())
+  email        String           @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime         @default(now())
+  brands       Brand[]
+  meta         MetaConnection?
+  campaigns    Campaign[]
+  posts        Post[]
+  reports      StrategyReport[]
+  apiTokens    ApiToken[]
 }
 
-model Post {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title       String
-  platform    PostPlatform
-  format      PostFormat
-  headline    String
-  subhead     String?
-  caption     String
-  hashtags    String[]
-  cta         String
-  visualBrief Json     // Style, colors, imagery preferences
-  altText     String
-  designId    String?  // Canva design ID
-  exportUrls  String[] // Asset download URLs
-  status      PostStatus @default(DRAFT)
-  scheduledAt DateTime?
-  publishedAt DateTime?
-  metrics     Json?    // Engagement metrics
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+/// One brand per Facebook Page: its own profile, content, analytics, strategy and autopilot
+model Brand {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  industry     String
+  description  String
+  audience     String
+  tone         String
+  offerings    String
+  goals        String
+  website      String?
+  language     String   @default("English")
+  visualStyle  String   @default("Clean, modern, bright natural light")
+  postsPerWeek Int      @default(4)
+  /// When on, the scheduler plans next week's posts and schedules them without approval
+  autopilot    Boolean  @default(false)
+  timezone     String   @default("UTC")
+  /// The Facebook Page (and its linked Instagram account) this brand publishes to
+  pageId          String?
+  pageName        String?
+  pageAccessToken String?
+  igUserId        String?
+  igUsername      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  campaigns    Campaign[]
+  posts        Post[]
+  reports      StrategyReport[]
 
-  @@map("posts")
+  @@unique([userId, pageId])
 }
 
-model ContentGeneration {
-  id          String   @id @default(cuid())
-  userId      String
-  prompt      String
-  response    Json
-  tokensUsed  Int
-  provider    String   // "openai", "gemini", etc.
-  model       String   // "gpt-4", "gemini-1.5-flash", etc.
-  createdAt   DateTime @default(now())
-
-  @@map("content_generations")
+model MetaConnection {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAccessToken String
+  tokenExpiresAt  DateTime?
+  /// Pages returned by /me/accounts; brands link to them by id
+  availablePages  Json
+  connectedAt     DateTime  @default(now())
 }
 
-model ApiKey {
+model Campaign {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider  ApiProvider
-  keyName   String
-  keyValue  String   // Should be encrypted in production
-  isActive  Boolean  @default(true)
+  brandId   String
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  name      String
+  brief     String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, provider])
-  @@map("api_keys")
+  posts     Post[]
 }
 
-model SocialAccount {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  platform    PostPlatform
-  accountId   String   // Platform-specific account ID
-  username    String
-  accessToken String   // Should be encrypted in production
-  refreshToken String? // Should be encrypted in production
-  tokenExpiry DateTime?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([userId, platform, accountId])
-  @@map("social_accounts")
-}
-
-enum PostPlatform {
-  INSTAGRAM
+enum Platform {
   FACEBOOK
-  TWITTER
-  TIKTOK
-  YOUTUBE_SHORTS
-  LINKEDIN
+  INSTAGRAM
 }
 
-enum PostFormat {
-  SQUARE
-  VERTICAL
-  HORIZONTAL
-  CAROUSEL
-  REEL
-  STORY
+enum Pillar {
+  EDUCATIONAL
+  PROMOTIONAL
+  ENGAGEMENT
+  BEHIND_THE_SCENES
+  SOCIAL_PROOF
+  INSPIRATIONAL
+}
+
+enum ImageState {
+  NONE
+  PENDING
+  GENERATING
+  READY
+  FAILED
 }
 
 enum PostStatus {
   DRAFT
-  GENERATED
   SCHEDULED
+  PUBLISHING
   PUBLISHED
   FAILED
-  ARCHIVED
 }
 
-enum ApiProvider {
-  GEMINI
-  CANVA
-  META
-  PINECONE
+model Post {
+  id               String     @id @default(cuid())
+  userId           String
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandId          String
+  brand            Brand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  campaignId       String?
+  campaign         Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  platform         Platform
+  pillar           Pillar
+  hook             String
+  caption          String
+  hashtags         String[]
+  imagePrompt      String
+  imageFile        String?
+  imageState       ImageState @default(NONE)
+  status           PostStatus @default(DRAFT)
+  scheduledAt      DateTime?
+  publishedAt      DateTime?
+  externalId       String?
+  permalink        String?
+  error            String?
+  reach            Int?
+  views            Int?
+  likes            Int?
+  comments         Int?
+  shares           Int?
+  saves            Int?
+  interactions     Int?
+  metricsUpdatedAt DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([brandId, status])
+  @@index([status, scheduledAt])
+}
+
+model StrategyReport {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brandId   String
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  /// Structured output from the strategist model (see lib/ai/strategy.ts)
+  report    Json
+  postCount Int
+  createdAt DateTime @default(now())
+}
+
+/// Personal access tokens for the MCP endpoint (/api/mcp). Only the SHA-256 hash is stored.
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  tokenHash  String    @unique
+  /// First characters of the token, shown so the user can tell tokens apart
+  prefix     String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
 }

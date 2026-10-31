@@ -1,49 +1,40 @@
-import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-import { NextRequest } from 'next/server'
+import "server-only"
+import { cache } from "react"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { db } from "@/lib/db"
+import { readSession } from "@/lib/session"
 
-export interface AuthUser {
-    id: string
-    email: string
-    name?: string
+export const ACTIVE_BRAND_COOKIE = "brand"
+
+/** Current user or null. Deduplicated per request. */
+export const getUser = cache(async () => {
+  const userId = await readSession()
+  if (!userId) return null
+  return db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true },
+  })
+})
+
+export async function requireUser() {
+  const user = await getUser()
+  if (!user) redirect("/login")
+  return user
 }
 
-export async function hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 12)
-}
+/** All of the user's brands, oldest first. */
+export const getBrands = cache(async (userId: string) => db.brand.findMany({ where: { userId }, orderBy: { createdAt: "asc" } }))
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword)
-}
-
-export function generateToken(user: AuthUser): string {
-    return jwt.sign(
-        { id: user.id, email: user.email, name: user.name },
-        process.env.JWT_SECRET!,
-        { expiresIn: '7d' }
-    )
-}
-
-export function verifyToken(token: string): AuthUser | null {
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AuthUser
-        return decoded
-    } catch (error) {
-        return null
-    }
-}
-
-export function getAuthUser(request: NextRequest): AuthUser | null {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null
-    }
-
-    const token = authHeader.substring(7)
-    return verifyToken(token)
-}
-
-export function createAuthResponse(message: string, status: number = 401) {
-    return Response.json({ error: message }, { status })
+/**
+ * For app pages: the user and the brand they're working in (chosen with the brand switcher,
+ * falling back to their first brand). Users without any brand go to onboarding.
+ */
+export async function requireBrand() {
+  const user = await requireUser()
+  const brands = await getBrands(user.id)
+  if (!brands.length) redirect("/onboarding")
+  const activeId = (await cookies()).get(ACTIVE_BRAND_COOKIE)?.value
+  const brand = brands.find((b) => b.id === activeId) ?? brands[0]
+  return { user, brand, brands }
 }

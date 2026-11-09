@@ -23,8 +23,7 @@ export default async function Home() {
           Postpilot
         </span>
         <nav className="flex gap-2">
-          <Link href="/login" className={buttonVariants({ variant: "ghost" })}>Log in</Link>
-          <Link href="/register" className={buttonVariants()}>Get started</Link>
+          <Link href="/login" className={buttonVariants()}>Log in</Link>
         </nav>
       </header>
       <section className="mx-auto max-w-3xl px-6 pt-16 pb-20 text-center">
@@ -36,8 +35,7 @@ export default async function Home() {
           Plan, create and publish on-brand posts, then let real results shape the next week&apos;s strategy.
         </p>
         <div className="mt-8 flex justify-center gap-3">
-          <Link href="/register" className={buttonVariants({ size: "lg", className: "px-5" })}>Start free</Link>
-          <Link href="/login" className={buttonVariants({ size: "lg", variant: "outline", className: "px-5" })}>I have an account</Link>
+          <Link href="/login" className={buttonVariants({ size: "lg", className: "px-5" })}>Log in</Link>
         </div>
       </section>
       <section className="mx-auto grid max-w-6xl gap-4 px-6 pb-24 sm:grid-cols-2 lg:grid-cols-4">
